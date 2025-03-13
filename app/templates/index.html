@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-dark border border-dark rounded px-8 pt-6 pb-8 mb-4">
+        <h1 class="text-3xl font-bold mb-6 text-center">Chinese Novel Translator</h1>
+        <form action="/translate" method="get" class="mb-4">
+            <div class="mb-6">
+                <label class="block text-gray-300 text-sm font-bold mb-2" for="url">
+                    Novel URL
+                </label>
+                <input class="w-full px-4 py-2 rounded bg-[rgb(30,30,32)] border border-[rgb(55,55,57)] text-gray-300 focus:outline-none focus:border-blue-500"
+                    id="url" name="url" type="url" placeholder="https://example.com/novel/chapter-1" required>
+            </div>
+            <div class="mb-6">
+                <label class="block text-gray-300 text-sm font-bold mb-2" for="method">
+                    Translation Method
+                </label>
+                <select class="w-full px-4 py-2 rounded bg-[rgb(30,30,32)] border border-[rgb(55,55,57)] text-gray-300 focus:outline-none focus:border-blue-500"
+                    id="method" name="method">
+                    <option value="openrouter">OpenRouter AI (DeepSeek)</option>
+                    <option value="dichtienghoa">Dichtienghoa.com</option>
+                </select>
+                <p class="mt-2 text-sm text-gray-400">
+                    OpenRouter: Better quality, slower<br>
+                    Dichtienghoa: Faster, basic translation
+                </p>
+            </div>
+            <div class="flex items-center justify-center">
+                <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded focus:outline-none"
+                    type="submit">
+                    Translate
+                </button>
+            </div>
+        </form>
+        <div class="text-center text-gray-400 text-sm">
+            <p>Enter the URL of a Chinese novel chapter to get it translated to Vietnamese</p>
+        </div>
+    </div>
+</div>
+{% endblock %} 

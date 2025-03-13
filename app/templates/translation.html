@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="novel-content">
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold mb-4">{{ title }}</h1>
+        <p class="text-sm">
+            <a href="{{ original_url }}" target="_blank" class="hover:underline">Original Page</a>
+        </p>
+    </div>
+    
+    <div class="mt-8">
+        {{ content | safe }}
+    </div>
+</div>
+
+<script>
+    // Add loading state to links
+    document.addEventListener('DOMContentLoaded', function() {
+        const links = document.querySelectorAll('a');
+        links.forEach(link => {
+            link.addEventListener('click', function() {
+                if (this.href.includes('/translate')) {
+                    this.innerHTML += ' <span class="inline-block animate-spin">↻</span>';
+                }
+            });
+        });
+    });
+</script>
+{% endblock %} 
