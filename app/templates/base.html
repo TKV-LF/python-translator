@@ -52,6 +52,12 @@
             display: block !important;
         }
 
+        @media (max-width: 768px) {
+            .header-form {
+                display: none;
+            }
+        }
+
     </style>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -64,7 +70,7 @@
                     <a href="/home" class="text-xl font-bold">Novel Translator</a>
                 </div>
                 {% if request.url.path != "/home" %}
-                <div class="flex-1 max-w-3xl mx-4">
+                <div class="flex-1 max-w-3xl mx-4 header-form">
                     <form action="/translate" method="get" class="flex items-center space-x-2">
                         <input 
                             class="flex-1 px-4 py-2 rounded bg-[rgb(30,30,32)] border border-[rgb(55,55,57)] text-gray-300 focus:outline-none focus:border-blue-500"
