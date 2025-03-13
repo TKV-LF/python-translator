@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ title }}{% endblock %}
+{% block title %}{{ title if title and title.strip() else "Chinese Novel Translator" }}{% endblock %}
 
 {% block content %}
 <div class="novel-content">
