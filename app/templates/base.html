@@ -13,8 +13,11 @@
             font-size: 24px;
             line-height: 1.6;
         }
+        a {
+            width: fit-content;
+        }
         .content-container {
-            max-width: 1024px;
+            max-width: 1024px !important;
             margin: 0 auto;
             padding: 20px;
         }
@@ -48,30 +51,26 @@
             display: block !important;
         }
     </style>
+
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <nav class="bg-dark border-b border-dark">
-        <div class="max-w-6xl mx-auto px-4">
-            <div class="flex justify-between">
-                <div class="flex space-x-7">
-                    <div>
-                        <a href="/" class="flex items-center py-4 px-2">
-                            <span class="font-semibold text-gray-300 text-lg">Novel Translator</span>
-                        </a>
-                    </div>
+<body class=" text-gray-300 min-h-screen">
+    <nav class="shadow-lg mb-8">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/home" class="text-xl font-bold">Novel Translator</a>
                 </div>
             </div>
         </div>
     </nav>
-
-    <main class="content-container">
+    
+    <main class="content-container mx-auto px-4">
         {% block content %}{% endblock %}
     </main>
 
-    <footer class="bg-dark border-t border-dark mt-8">
-        <div class="container mx-auto px-4 py-4 text-center text-gray-400">
-            <p>Powered by Steven Translation</p>
-        </div>
+    <footer class="mt-8 py-4 text-center text-gray-500">
+        <p>&copy; {{ year }} Novel Translator. All rights reserved.</p>
     </footer>
 </body>
 </html> 

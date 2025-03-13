@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 import httpx
 from bs4 import BeautifulSoup, NavigableString
 import os
@@ -14,6 +14,8 @@ from typing import Dict, List, Literal
 import html
 import json
 import logging
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from datetime import datetime
 
 load_dotenv()
 
@@ -239,7 +241,7 @@ async def extract_content(url: str, method: TranslationMethod = "openrouter") ->
             
             # Find the main content
             content = None
-            for class_name in ['page-content', 'mybox', 'text-data', 'chapter-content', 'article-content']:
+            for class_name in ['page-content', 'print', 'mybox', 'text-data', 'chapter-content', 'article-content']:
                 content = soup.find(class_=re.compile(class_name))
                 if content:
                     break
@@ -252,8 +254,11 @@ async def extract_content(url: str, method: TranslationMethod = "openrouter") ->
                         content = tag
                         break
             
-            if not content:
-                raise HTTPException(status_code=400, detail="Could not find novel content")
+            if not content or not content.get_text().strip():
+                raise HTTPException(
+                    status_code=404,
+                    detail="No content found on this page. Please check if the URL is correct."
+                )
             
             # Clean up content and remove duplicates
             content = clean_content(content)
@@ -275,9 +280,14 @@ async def extract_content(url: str, method: TranslationMethod = "openrouter") ->
             
             return translated_title, translated_content
             
+        except httpx.HTTPError as e:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Could not access the URL: {str(e)}"
+            )
         except Exception as e:
             raise HTTPException(
-                status_code=400,
+                status_code=500,
                 detail=f"Error processing content: {str(e)}"
             )
 
@@ -298,15 +308,21 @@ async def startup_event():
 async def shutdown_event():
     logger.info("Application shutting down...")
 
-# Modify your root endpoint to be more lightweight
+# Redirect root to home
 @app.get("/")
-async def read_root():
-    return {"status": "ok"}
+async def redirect_to_home():
+    return RedirectResponse(url="/home")
 
-# Move your HTML endpoint to a different route
+# Home page
 @app.get("/home", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(
+        "index.html", 
+        {
+            "request": request,
+            "year": datetime.now().year
+        }
+    )
 
 @app.get("/translate", response_class=HTMLResponse)
 async def translate(request: Request, url: str, method: TranslationMethod = "openrouter"):
@@ -319,7 +335,8 @@ async def translate(request: Request, url: str, method: TranslationMethod = "ope
                 "title": title,
                 "content": content,
                 "original_url": url,
-                "translation_method": method
+                "translation_method": method,
+                "year": datetime.now().year
             }
         )
     except HTTPException as e:
@@ -328,7 +345,30 @@ async def translate(request: Request, url: str, method: TranslationMethod = "ope
             {
                 "request": request,
                 "error_message": str(e.detail),
-                "original_url": url
+                "original_url": url,
+                "year": datetime.now().year
             },
             status_code=e.status_code
-        ) 
+        )
+
+# Custom 404 handler
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 404:
+        return templates.TemplateResponse(
+            "404.html", 
+            {
+                "request": request,
+                "year": datetime.now().year
+            }, 
+            status_code=404
+        )
+    return templates.TemplateResponse(
+        "error.html",
+        {
+            "request": request,
+            "error_message": str(exc.detail),
+            "year": datetime.now().year
+        },
+        status_code=exc.status_code
+    ) 
