@@ -239,26 +239,32 @@ async def extract_content(url: str, method: TranslationMethod = "openrouter") ->
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'html.parser')
             
+            # Extract title first
+            title = soup.title.string if soup.title else "Unknown Title"
+            
             # Find the main content
             content = None
-            for class_name in ['page-content', 'print', 'mybox', 'text-data', 'chapter-content', 'article-content']:
-                content = soup.find(class_=re.compile(class_name))
-                if content:
-                    break
+            identifierClasses = ['page-content', 'print', 'mybox', 'text-data', 'chapter-content', 'article-content']
             
-            if not content:
-                # Try finding by common novel content patterns
-                for tag in soup.find_all(['div', 'article']):
-                    text_length = len(tag.get_text(strip=True))
-                    if text_length > 500:  # Likely main content if long enough
-                        content = tag
+            # Special handling for shuhaige.net
+            if url.startswith('https://m.shuhaige.net') or url.startswith('https://www.shuhaige.net'):
+                identifierClasses = ['headeline', 'pager', 'content']
+                merged_content = soup.new_tag('div')
+                merged_content['class'] = 'merged-content'
+                for class_name in identifierClasses:
+                    found_element = soup.find(class_=re.compile(class_name))
+                    if found_element:
+                        element_copy = found_element.decode_contents()
+                        merged_content.append(BeautifulSoup(element_copy, 'html.parser'))
+                content = merged_content
+            else: 
+                for class_name in identifierClasses:
+                    content = soup.find(class_=re.compile(class_name))
+                    if content:
                         break
             
-            if not content or not content.get_text().strip():
-                raise HTTPException(
-                    status_code=404,
-                    detail="No content found on this page. Please check if the URL is correct."
-                )
+            if not content:
+                raise HTTPException(status_code=400, detail="Could not find novel content")
             
             # Clean up content and remove duplicates
             content = clean_content(content)
@@ -267,27 +273,18 @@ async def extract_content(url: str, method: TranslationMethod = "openrouter") ->
             for link in content.find_all('a', href=True):
                 original_href = link['href']
                 modified_href = await modify_url(original_href, url)
-                link['href'] = f"{modified_href}&method={method}"  # Add translation method to URL
+                link['href'] = f"{modified_href}&method={method}"
                 link['data-original-href'] = original_href
             
-            # Extract and translate title
-            title = soup.title.string if soup.title else "Unknown Title"
+            # Translate title and content
             translated_title = await translate_content(title, method)
-            
-            # Translate the entire content
-            content_html = str(content)
-            translated_content = await translate_content(content_html, method)
+            translated_content = await translate_content(str(content), method)
             
             return translated_title, translated_content
             
-        except httpx.HTTPError as e:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Could not access the URL: {str(e)}"
-            )
         except Exception as e:
             raise HTTPException(
-                status_code=500,
+                status_code=400,
                 detail=f"Error processing content: {str(e)}"
             )
 
