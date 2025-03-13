@@ -58,6 +58,42 @@
             }
         }
 
+        .scroll-button {
+            position: fixed;
+            right: 20px;
+            padding: 15px;
+            background-color: rgb(39, 39, 41);
+            border: 1px solid rgb(55, 55, 57);
+            color: white;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: opacity 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 45px;
+            height: 45px;
+            z-index: 100;
+        }
+
+        .scroll-button:hover {
+            background-color: rgb(55, 55, 57);
+        }
+
+        #scrollToTop {
+            bottom: 100px;
+        }
+
+        #scrollToBottom {
+            bottom: 40px;
+        }
+
+        @media (max-width: 640px) {
+            .scroll-button {
+                right: 10px;
+            }
+        }
+
     </style>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -105,6 +141,51 @@
     <main class="content-container mx-auto px-4">
         {% block content %}{% endblock %}
     </main>
+
+    <!-- Scroll buttons -->
+    <button id="scrollToTop" class="scroll-button" title="Scroll to top" style="display: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+        </svg>
+    </button>
+    
+    <button id="scrollToBottom" class="scroll-button" title="Scroll to bottom" style="display: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+    </button>
+
+    <script>
+        const scrollToTop = document.getElementById('scrollToTop');
+        const scrollToBottom = document.getElementById('scrollToBottom');
+        
+        // Show/hide buttons based on scroll position
+        window.onscroll = function() {
+            if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
+                scrollToTop.style.display = "flex";
+                scrollToBottom.style.display = "flex";
+            } else {
+                scrollToTop.style.display = "none";
+                scrollToBottom.style.display = "none";
+            }
+        };
+        
+        // Scroll to top
+        scrollToTop.addEventListener('click', function() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+        
+        // Scroll to bottom
+        scrollToBottom.addEventListener('click', function() {
+            window.scrollTo({
+                top: document.documentElement.scrollHeight,
+                behavior: 'smooth'
+            });
+        });
+    </script>
 
     <footer class="mt-8 py-4 text-center text-gray-500">
         <p>&copy; {{ year }} Novel Translator. All rights reserved.</p>
