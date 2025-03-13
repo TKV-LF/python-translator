@@ -94,6 +94,31 @@
             }
         }
 
+        .chapter-nav {
+            position: relative;
+        }
+        
+        .chapter-nav:after {
+            content: attr(data-shortcut);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        
+        .chapter-nav:hover:after {
+            opacity: 1;
+        }
+
     </style>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -183,6 +208,61 @@
             window.scrollTo({
                 top: document.documentElement.scrollHeight,
                 behavior: 'smooth'
+            });
+        });
+
+        document.addEventListener('keydown', function(event) {
+            // Left arrow key
+            if (event.keyCode === 37) {
+                const prevChapter = document.querySelector('a:contains("Chương trước"), a:contains("chương trước")');
+                if (prevChapter) {
+                    prevChapter.click();
+                }
+            }
+            // Right arrow key
+            else if (event.keyCode === 39) {
+                const nextChapter = document.querySelector('a:contains("Chương sau"), a:contains("chương sau")');
+                if (nextChapter) {
+                    nextChapter.click();
+                }
+            }
+        });
+
+        // Add jQuery-like contains function since we're not using jQuery
+        Element.prototype.contains = function(text) {
+            return this.innerText.toLowerCase().includes(text.toLowerCase());
+        };
+
+        // Extend querySelector to use our contains function
+        Document.prototype.querySelector = (function(querySelector) {
+            return function(selector) {
+                if (selector.includes(':contains(')) {
+                    const text = selector.match(/:contains\((.*?)\)/)[1].replace(/['"]/g, '');
+                    const elements = document.getElementsByTagName('a');
+                    for (let element of elements) {
+                        if (element.contains(text)) {
+                            return element;
+                        }
+                    }
+                    return null;
+                }
+                return querySelector.call(this, selector);
+            };
+        })(Document.prototype.querySelector);
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add tooltips to navigation links
+            const prevLinks = document.querySelectorAll('a:contains("Chương trước")');
+            const nextLinks = document.querySelectorAll('a:contains("Chương sau")');
+            
+            prevLinks.forEach(link => {
+                link.classList.add('chapter-nav');
+                link.setAttribute('data-shortcut', '← Left Arrow');
+            });
+            
+            nextLinks.forEach(link => {
+                link.classList.add('chapter-nav');
+                link.setAttribute('data-shortcut', 'Right Arrow →');
             });
         });
     </script>
