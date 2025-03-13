@@ -22,7 +22,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+# Only mount static files if directory exists
+static_dir = "app/static"
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
 templates = Jinja2Templates(directory="app/templates")
 
 # API Keys configuration
