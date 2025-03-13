@@ -17,6 +17,7 @@ import logging
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from datetime import datetime
 
+
 load_dotenv()
 
 # Set up logging
@@ -54,8 +55,13 @@ TranslationMethod = Literal["openrouter", "base", "vietphrase"]
 def get_next_api_key() -> str:
     """Rotate to the next available API key."""
     global current_api_key_index
-    current_api_key_index = (current_api_key_index + 1) % len(API_KEYS)
-    return API_KEYS[current_api_key_index]
+    valid_keys = [key for key in API_KEYS if key]  # Filter out None or empty keys
+    if not valid_keys:
+        logger.error("No valid API keys configured")
+        return ""
+        
+    current_api_key_index = (current_api_key_index + 1) % len(valid_keys)
+    return valid_keys[current_api_key_index]
 
 def get_current_api_key() -> str:
     """Get the current API key."""
@@ -145,7 +151,6 @@ async def translate_with_dichtienghoa(text: str) -> str:
             response.raise_for_status()
             
             result = response.json()
-            print('translate here')
             if result['data']:
                 translation_cache[cache_key] = result['data']
                 return result['data']
@@ -190,6 +195,116 @@ async def translate_chunk_dichtienghoa(chunk: str, semaphore: asyncio.Semaphore)
                     text_node.replace_with(translation.strip())
         
         return str(soup)
+
+async def translate_chunk(chunk: str, semaphore: asyncio.Semaphore) -> str:
+    """Translate a chunk using OpenRouter with rate limiting."""
+    if not chunk.strip():
+        return ""
+        
+    async with semaphore:
+        # Extract text content while preserving HTML structure
+        soup = BeautifulSoup(chunk, 'html.parser')
+        
+        # Collect all text nodes and their positions
+        text_nodes = []
+        text_contents = []
+        for text_node in soup.find_all(text=True):
+            if isinstance(text_node, NavigableString) and text_node.strip():
+                text_nodes.append(text_node)
+                text_contents.append(text_node.strip())
+        
+        if not text_contents:
+            return chunk
+            
+        # Combine all text with a special separator
+        combined_text = "\n[SEP]\n".join(text_contents)
+        
+        # Translate all text at once using OpenRouter
+        translated_text = await translate_with_openrouter(combined_text)
+        
+        # Split and replace translations
+        if translated_text and translated_text != combined_text:
+            translations = translated_text.split("\n[SEP]\n")
+            for text_node, translation in zip(text_nodes, translations):
+                if translation.strip():
+                    text_node.replace_with(translation.strip())
+        
+        return str(soup)
+
+async def translate_with_huggingface(text: str) -> str:
+    """Translate text using HuggingFace API."""
+    if not text.strip():
+        return ""
+    from transformers import MarianMTModel, MarianTokenizer
+    model_name = 'Helsinki-NLP/opus-mt-zh-vn'
+    model = MarianMTModel.from_pretrained(model_name)
+    tokenizer = MarianTokenizer.from_pretrained(model_name)
+
+    # Text to translate (Chinese)
+    chinese_text = text  # Example Chinese text
+
+    # Tokenize the input text
+    tokenized_input = tokenizer(chinese_text, return_tensors="pt", padding=True)
+
+    # Translate the text
+    translated = model.generate(**tokenized_input)
+
+    # Decode the translated output
+    translated_text = tokenizer.decode(translated[0], skip_special_tokens=True)
+
+    # Print the translated text
+    return translated_text
+
+async def translate_with_openrouter(text: str) -> str:
+    """Translate text using OpenRouter API."""
+    if not text.strip():
+        return ""
+    
+    # Check cache
+    cache_key = f"or:{text.strip()}"
+    if cache_key in translation_cache:
+        return translation_cache[cache_key]
+
+    api_key = get_next_api_key()
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    
+    data = {
+        "model": "deepseek/deepseek-chat:free",
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a Chinese to Vietnamese translator. Translate the following text accurately while preserving any HTML formatting."
+            },
+            {
+                "role": "user",
+                "content": text
+            }
+        ]
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                OPENROUTER_API_URL,
+                json=data,
+                headers=headers
+            )
+            print(response)
+            response.raise_for_status()
+            print(response.text)
+            result = response.json()
+            
+            if result.get('choices') and result['choices'][0].get('message'):
+                translation = result['choices'][0]['message']['content']
+                translation_cache[cache_key] = translation
+                return translation
+            return text
+    except Exception as e:
+        print(f"OpenRouter translation error: {str(e)}")
+        return text
 
 async def translate_content(content: str, method: TranslationMethod = "openrouter") -> str:
     """Translate content using specified method."""
@@ -269,7 +384,7 @@ async def translate_with_vietphrase(url: str) -> str:
     except Exception as e:
         print(f"VietPhrase translation error: {str(e)}")
         return ""
-
+    
 async def extract_content(url: str, method: TranslationMethod = "base") -> tuple:
     """Extract content from the given URL and prepare it for translation."""
     headers = {
