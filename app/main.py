@@ -47,7 +47,7 @@ CONCURRENT_TRANSLATIONS = 3  # Number of parallel translations
 translation_cache: Dict[str, str] = {}
 
 # Translation method type
-TranslationMethod = Literal["openrouter", "dichtienghoa"]
+TranslationMethod = Literal["openrouter", "base"]
 
 def get_next_api_key() -> str:
     """Rotate to the next available API key."""

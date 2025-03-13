@@ -63,6 +63,7 @@
                 <div class="flex items-center">
                     <a href="/home" class="text-xl font-bold">Novel Translator</a>
                 </div>
+                {% if request.url.path != "/home" %}
                 <div class="flex-1 max-w-3xl mx-4">
                     <form action="/translate" method="get" class="flex items-center space-x-2">
                         <input 
@@ -77,8 +78,8 @@
                             class="px-4 py-2 rounded bg-[rgb(30,30,32)] border border-[rgb(55,55,57)] text-gray-300 focus:outline-none focus:border-blue-500"
                             name="method"
                         >
+                            <option value="base" {% if translation_method == 'base' %}selected{% endif %}>Base</option>
                             <option value="openrouter" {% if translation_method == 'openrouter' %}selected{% endif %}>OpenRouter</option>
-                            <option value="dichtienghoa" {% if translation_method == 'dichtienghoa' %}selected{% endif %}>Dichtienghoa</option>
                         </select>
                         <button 
                             type="submit"
@@ -88,6 +89,8 @@
                         </button>
                     </form>
                 </div>
+                {% endif %}
+
             </div>
         </div>
     </nav>
