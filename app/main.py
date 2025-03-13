@@ -13,8 +13,13 @@ import random
 from typing import Dict, List, Literal
 import html
 import json
+import logging
 
 load_dotenv()
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -271,8 +276,31 @@ async def extract_content(url: str, method: TranslationMethod = "openrouter") ->
                 detail=f"Error processing content: {str(e)}"
             )
 
-@app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request):
+# Add a health check endpoint
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
+
+# Add startup and shutdown events
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Application starting up...")
+    # Log environment variables (excluding sensitive data)
+    logger.info(f"PORT: {os.getenv('PORT')}")
+    logger.info("API Keys configured: %s", bool(API_KEYS[0]))
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    logger.info("Application shutting down...")
+
+# Modify your root endpoint to be more lightweight
+@app.get("/")
+async def read_root():
+    return {"status": "ok"}
+
+# Move your HTML endpoint to a different route
+@app.get("/home", response_class=HTMLResponse)
+async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/translate", response_class=HTMLResponse)
