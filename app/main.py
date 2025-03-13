@@ -39,6 +39,8 @@ API_KEYS = [
 current_api_key_index = 0
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 DICHTIENGHOA_URL = "https://dichtienghoa.com/transtext"
+VIETPHRASE_URL = "http://vietphrase.info/VietPhrase/Browser"
+
 
 # Translation settings
 MAX_TOKENS_PER_REQUEST = 3000
@@ -47,7 +49,7 @@ CONCURRENT_TRANSLATIONS = 3  # Number of parallel translations
 translation_cache: Dict[str, str] = {}
 
 # Translation method type
-TranslationMethod = Literal["openrouter", "base"]
+TranslationMethod = Literal["openrouter", "base", "vietphrase"]
 
 def get_next_api_key() -> str:
     """Rotate to the next available API key."""
@@ -225,7 +227,50 @@ async def modify_url(url: str, base_url: str) -> str:
     
     return f"/translate?url={url}"
 
-async def extract_content(url: str, method: TranslationMethod = "openrouter") -> tuple:
+async def translate_with_vietphrase(url: str) -> str:
+    """Translate using VietPhrase service."""
+    vietphrase_url = "http://vietphrase.info/VietPhrase/Browser"
+    params = {
+        "url": url,
+        "GB2312": "true",
+        "script": "true",
+        "t": "VP"
+    }
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    }
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(vietphrase_url, params=params, headers=headers)
+            response.raise_for_status()
+            
+            # Parse the response HTML
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Find the container element
+            container = soup.find(class_='container')
+            if container:
+                # Update all VietPhrase links
+                for link in container.find_all('a', href=True):
+                    href = link['href']
+                    if 'vietphrase.info/VietPhrase/Browser' in href:
+                        # Extract the original URL from VietPhrase link
+                        from urllib.parse import urlparse, parse_qs
+                        parsed = urlparse(href)
+                        original_url = parse_qs(parsed.query).get('url', [''])[0]
+                        if original_url:
+                            modified_href = await modify_url(original_url, url)
+                            link['href'] = f"{modified_href}&method=vietphrase"
+                
+                return str(container)
+            return ""
+    except Exception as e:
+        print(f"VietPhrase translation error: {str(e)}")
+        return ""
+
+async def extract_content(url: str, method: TranslationMethod = "base") -> tuple:
     """Extract content from the given URL and prepare it for translation."""
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -235,6 +280,14 @@ async def extract_content(url: str, method: TranslationMethod = "openrouter") ->
     
     async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
         try:
+            # If using VietPhrase, handle differently
+            if method == "vietphrase":
+                translated_content = await translate_with_vietphrase(url)
+                if translated_content:
+                    return "VietPhrase Translation", translated_content
+                raise HTTPException(status_code=400, detail="VietPhrase translation failed")
+            
+            # Extract title first
             response = await client.get(url, headers=headers, follow_redirects=True)
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'html.parser')

@@ -81,10 +81,11 @@
                             required
                         >
                         <select 
-                            class="px-4 py-2 rounded bg-[rgb(30,30,32)] border border-[rgb(55,55,57)] text-gray-300 focus:outline-none focus:border-blue-500"
+                            class="w-full sm:w-auto px-4 py-2 rounded bg-[rgb(30,30,32)] border border-[rgb(55,55,57)] text-gray-300 focus:outline-none focus:border-blue-500"
                             name="method"
                         >
-                            <option value="base" {% if translation_method == 'base' %}selected{% endif %}>Base</option>
+                            <option value="vietphrase" {% if translation_method == 'vietphrase' %}selected{% endif %}>VietPhrase</option>
+                            <option value="base" {% if translation_method == 'base' %}selected{% endif %}>Dichtienghoa</option>
                             <option value="openrouter" {% if translation_method == 'openrouter' %}selected{% endif %}>OpenRouter</option>
                         </select>
                         <button 
