@@ -94,10 +94,33 @@
             }
         }
 
+        .chapter-nav-parent {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+            gap: 10px;
+        }
+        .chapter-nav-parent a {
+            margin-top: auto;
+            margin-bottom: auto;
+        }
+        .chapter-nav-parent a,
         .chapter-nav {
             position: relative;
+            padding: 10px 20px;
+            background-color: rgb(39, 39, 41);
+            border: 1px solid rgb(55, 55, 57);
+            border-radius: 6px;
+            text-decoration: none;
+            transition: background-color 0.3s;
         }
         
+        .chapter-nav-parent a:hover,
+        .chapter-nav:hover {
+            background-color: rgb(55, 55, 57);
+            color: rgb(172, 173, 175);
+        }
+
         .chapter-nav:after {
             content: attr(data-shortcut);
             position: absolute;
@@ -113,12 +136,12 @@
             transition: opacity 0.2s;
             pointer-events: none;
             white-space: nowrap;
+            margin-bottom: 5px;
         }
         
         .chapter-nav:hover:after {
             opacity: 1;
         }
-
     </style>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -251,19 +274,56 @@
         })(Document.prototype.querySelector);
 
         document.addEventListener('DOMContentLoaded', function() {
-            // Add tooltips to navigation links
-            const prevLinks = document.querySelectorAll('a:contains("Chương trước")');
-            const nextLinks = document.querySelectorAll('a:contains("Chương sau")');
+            // Find navigation links
+            const prevLinks = Array.from(document.getElementsByTagName('a')).filter(a => 
+                a.textContent.toLowerCase().includes('chương trước')
+            );
+            const nextLinks = Array.from(document.getElementsByTagName('a')).filter(a => 
+                a.textContent.toLowerCase().includes('chương sau')
+            );
             
-            prevLinks.forEach(link => {
-                link.classList.add('chapter-nav');
-                link.setAttribute('data-shortcut', '← Left Arrow');
+            // Process each pair of navigation links
+            prevLinks.forEach((prevLink, index) => {
+                const nextLink = nextLinks[index];
+                if (nextLink) {
+                    // Create parent div if not exists
+                    const parent = prevLink.parentElement;
+                    if (parent === nextLink.parentElement) {
+                        parent.classList.add('chapter-nav-parent');
+                    } else {
+                        // If links are in different parents, create new container
+                        const container = document.createElement('div');
+                        container.classList.add('chapter-nav-parent');
+                        prevLink.parentElement.insertBefore(container, prevLink);
+                        container.appendChild(prevLink);
+                        container.appendChild(nextLink);
+                    }
+                }
+                
+                // Add navigation classes and tooltips
+                prevLink.classList.add('chapter-nav');
+                prevLink.setAttribute('data-shortcut', '← Left Arrow');
+                if (nextLink) {
+                    nextLink.classList.add('chapter-nav');
+                    nextLink.setAttribute('data-shortcut', 'Right Arrow →');
+                }
             });
-            
-            nextLinks.forEach(link => {
-                link.classList.add('chapter-nav');
-                link.setAttribute('data-shortcut', 'Right Arrow →');
-            });
+        });
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(event) {
+            if (event.keyCode === 37) { // Left arrow
+                const prevChapter = Array.from(document.getElementsByTagName('a')).find(a => 
+                    a.textContent.toLowerCase().includes('chương trước')
+                );
+                if (prevChapter) prevChapter.click();
+            }
+            else if (event.keyCode === 39) { // Right arrow
+                const nextChapter = Array.from(document.getElementsByTagName('a')).find(a => 
+                    a.textContent.toLowerCase().includes('chương sau')
+                );
+                if (nextChapter) nextChapter.click();
+            }
         });
     </script>
 
