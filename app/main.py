@@ -343,7 +343,7 @@ async def translate_with_vietphrase(url: str) -> str:
             content = soup.find(id='html')
             if content:
                 # Update all VietPhrase links
-                for element in content.find_all(['meta', 'link']):
+                for element in content.find_all(['meta', 'link', 'base']):
                     element.decompose()
                 for link in content.find_all('a', href=True):
                     href = link['href']
