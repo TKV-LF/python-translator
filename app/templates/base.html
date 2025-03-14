@@ -313,14 +313,14 @@
         document.addEventListener('keydown', function(event) {
             // Left arrow key
             if (event.keyCode === 37) {
-                const prevChapter = document.querySelector('a:contains("Chương trước"), a:contains("chương trước")');
+                const prevChapter = document.querySelector('a:contains("Chương trước"), a:contains("chương trước"), a:contains("trang trước"), a:contains("Trang trước")');
                 if (prevChapter) {
                     prevChapter.click();
                 }
             }
             // Right arrow key
             else if (event.keyCode === 39) {
-                const nextChapter = document.querySelector('a:contains("Chương sau"), a:contains("chương sau")');
+                const nextChapter = document.querySelector('a:contains("Chương sau"), a:contains("chương sau"), a:contains("trang sau"), a:contains("Trang sau")');
                 if (nextChapter) {
                     nextChapter.click();
                 }
@@ -352,10 +352,10 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Find navigation links
             const prevLinks = Array.from(document.getElementsByTagName('a')).filter(a => 
-                a.textContent.toLowerCase().includes('chương trước')
+                a.textContent.toLowerCase().includes('chương trước') || a.textContent.toLowerCase().includes('trang trước') || a.textContent.toLowerCase().includes('trang trước')
             );
             const nextLinks = Array.from(document.getElementsByTagName('a')).filter(a => 
-                a.textContent.toLowerCase().includes('chương sau')
+                a.textContent.toLowerCase().includes('chương sau') || a.textContent.toLowerCase().includes('trang sau') || a.textContent.toLowerCase().includes('trang sau')
             );
 
             const chapterMenus = Array.from(document.getElementsByTagName('a')).filter(a => 

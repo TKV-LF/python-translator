@@ -231,30 +231,6 @@ async def translate_chunk(chunk: str, semaphore: asyncio.Semaphore) -> str:
         
         return str(soup)
 
-async def translate_with_huggingface(text: str) -> str:
-    """Translate text using HuggingFace API."""
-    if not text.strip():
-        return ""
-    from transformers import MarianMTModel, MarianTokenizer
-    model_name = 'Helsinki-NLP/opus-mt-zh-vn'
-    model = MarianMTModel.from_pretrained(model_name)
-    tokenizer = MarianTokenizer.from_pretrained(model_name)
-
-    # Text to translate (Chinese)
-    chinese_text = text  # Example Chinese text
-
-    # Tokenize the input text
-    tokenized_input = tokenizer(chinese_text, return_tensors="pt", padding=True)
-
-    # Translate the text
-    translated = model.generate(**tokenized_input)
-
-    # Decode the translated output
-    translated_text = tokenizer.decode(translated[0], skip_special_tokens=True)
-
-    # Print the translated text
-    return translated_text
-
 async def translate_with_openrouter(text: str) -> str:
     """Translate text using OpenRouter API."""
     if not text.strip():
@@ -360,15 +336,16 @@ async def translate_with_vietphrase(url: str) -> str:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(vietphrase_url, params=params, headers=headers)
             response.raise_for_status()
-            
             # Parse the response HTML
             soup = BeautifulSoup(response.text, 'html.parser')
             
             # Find the container element
-            container = soup.find(class_='container')
-            if container:
+            content = soup.find(id='html')
+            if content:
                 # Update all VietPhrase links
-                for link in container.find_all('a', href=True):
+                for element in content.find_all(['meta', 'link']):
+                    element.decompose()
+                for link in content.find_all('a', href=True):
                     href = link['href']
                     if 'vietphrase.info/VietPhrase/Browser' in href:
                         # Extract the original URL from VietPhrase link
@@ -379,7 +356,8 @@ async def translate_with_vietphrase(url: str) -> str:
                             modified_href = await modify_url(original_url, url)
                             link['href'] = f"{modified_href}&method=vietphrase"
                 
-                return str(container)
+                return str(content)
+            
             return ""
     except Exception as e:
         print(f"VietPhrase translation error: {str(e)}")
