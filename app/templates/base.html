@@ -350,12 +350,17 @@
         })(Document.prototype.querySelector);
 
         document.addEventListener('DOMContentLoaded', function() {
-            // Find navigation links
+            // Find navigation links with more variations
             const prevLinks = Array.from(document.getElementsByTagName('a')).filter(a => 
-                a.textContent.toLowerCase().includes('chương trước') || a.textContent.toLowerCase().includes('trang trước') || a.textContent.toLowerCase().includes('trang trước')
+                a.textContent.toLowerCase().includes('chương trước') || 
+                a.textContent.toLowerCase().includes('trang trước') ||
+                a.textContent.toLowerCase().includes('chương trước đó')
             );
             const nextLinks = Array.from(document.getElementsByTagName('a')).filter(a => 
-                a.textContent.toLowerCase().includes('chương sau') || a.textContent.toLowerCase().includes('trang sau') || a.textContent.toLowerCase().includes('trang sau')
+                a.textContent.toLowerCase().includes('chương sau') || 
+                a.textContent.toLowerCase().includes('trang sau') ||
+                a.textContent.toLowerCase().includes('trang kế tiếp') ||
+                a.textContent.toLowerCase().includes('chương kế tiếp')
             );
 
             const chapterMenus = Array.from(document.getElementsByTagName('a')).filter(a => 
@@ -391,17 +396,22 @@
             });
         });
 
-        // Keyboard navigation
+        // Update keyboard navigation as well
         document.addEventListener('keydown', function(event) {
             if (event.keyCode === 37) { // Left arrow
                 const prevChapter = Array.from(document.getElementsByTagName('a')).find(a => 
-                    a.textContent.toLowerCase().includes('chương trước')
+                    a.textContent.toLowerCase().includes('chương trước') ||
+                    a.textContent.toLowerCase().includes('trang trước') ||
+                    a.textContent.toLowerCase().includes('chương trước đó')
                 );
                 if (prevChapter) prevChapter.click();
             }
             else if (event.keyCode === 39) { // Right arrow
                 const nextChapter = Array.from(document.getElementsByTagName('a')).find(a => 
-                    a.textContent.toLowerCase().includes('chương sau')
+                    a.textContent.toLowerCase().includes('chương sau') ||
+                    a.textContent.toLowerCase().includes('trang sau') ||
+                    a.textContent.toLowerCase().includes('trang kế tiếp') ||
+                    a.textContent.toLowerCase().includes('chương kế tiếp')
                 );
                 if (nextChapter) nextChapter.click();
             }
