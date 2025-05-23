@@ -1,3 +1,5 @@
+from urllib.parse import urljoin, urlparse
+import re
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -6,10 +8,7 @@ import httpx
 from bs4 import BeautifulSoup, NavigableString
 import os
 from dotenv import load_dotenv
-import re
-from urllib.parse import urljoin, urlparse, quote
 import asyncio
-import random
 from typing import Dict, List, Literal
 import html
 import json
@@ -94,6 +93,7 @@ def split_html_content(content: str) -> List[str]:
     
     for element in soup.find_all(['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']):
         # Skip empty elements
+        
         if not element.get_text(strip=True):
             continue
             
@@ -308,10 +308,30 @@ async def modify_url(url: str, base_url: str) -> str:
     if not url:
         return "#"
     
+    # Remove @ prefix if present
+    if url.startswith('@'):
+        url = url[1:]
+    
     # Handle protocol-relative URLs (starting with //)
     if url.startswith('//'):
         url = f"https:{url}"
     
+    # Clean up multiple forward slashes and redundant domain names
+    parsed = urlparse(url)
+    if parsed.netloc:
+        # Split path by the domain name to remove redundant occurrences
+        path_parts = parsed.path.split(parsed.netloc)
+        cleaned_path = path_parts[-1] if path_parts else parsed.path
+        # Clean up multiple forward slashes in path
+        cleaned_path = re.sub(r'/+', '/', cleaned_path)
+        # Reconstruct URL with cleaned path
+        url = f"{parsed.scheme}://{parsed.netloc}{cleaned_path}"
+        if parsed.query:
+            url += f"?{parsed.query}"
+        if parsed.fragment:
+            url += f"#{parsed.fragment}"
+    
+    # Handle relative URLs
     parsed = urlparse(url)
     if not parsed.netloc:
         url = urljoin(base_url, url)
@@ -342,9 +362,11 @@ async def translate_with_vietphrase(url: str) -> str:
             # Find the container element
             content = soup.find(id='html')
             if content:
-                # Update all VietPhrase links
-                for element in content.find_all(['meta', 'link', 'base']):
+                # Remove unwanted elements including style tags
+                for element in content.find_all(['meta', 'link', 'base', 'style', 'script']):
                     element.decompose()
+                    
+                # Update all VietPhrase links
                 for link in content.find_all('a', href=True):
                     href = link['href']
                     if 'vietphrase.info/VietPhrase/Browser' in href:
@@ -390,6 +412,10 @@ async def extract_content(url: str, method: TranslationMethod = "base") -> tuple
             
             # Find the main content
             content = None
+            # The above code appears to be a comment in Python. It starts with a "#" symbol, which
+            # indicates that it is a single-line comment. The text "identifierClasses" seems to be a
+            # placeholder or a note about the content of the code. Comments are used to provide
+            # explanations or notes within the code for better understanding by developers.
             identifierClasses = ['page-content', 'print', 'mybox', 'text-data', 'chapter-content', 'article-content']
             
             # Special handling for shuhaige.net
