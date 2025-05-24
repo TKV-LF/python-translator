@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Chinese Novel Translator{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="icon" href="/img/logo.png" type="image/x-icon">
     <style>
         body {
             background-color: rgb(39, 39, 41);
@@ -34,7 +35,7 @@
         .novel-content p {
             margin-bottom: 1.5em;
             font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
-            font-size: 24px;
+            font-size: inherit;
             line-height: 1.8;
         }
         a {
@@ -234,7 +235,9 @@
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
-                    <a href="/home" class="text-xl font-bold">Novel Translator</a>
+                    <a href="/home" class="text-xl font-bold">
+                        <img src="/img/logo.png" alt="Novel Translator" class="w-10 h-10 r">
+                    </a>
                 </div>
                 {% if request.url.path != "/home" %}
                 <div class="flex-1 max-w-3xl mx-4 header-form">
@@ -253,7 +256,6 @@
                         >
                             <option value="vietphrase" {% if translation_method == 'vietphrase' %}selected{% endif %}>VietPhrase</option>
                             <option value="base" {% if translation_method == 'base' %}selected{% endif %}>Dichtienghoa</option>
-                            <!-- <option value="openrouter" {% if translation_method == 'openrouter' %}selected{% endif %}>OpenRouter</option> -->
                         </select>
                         <button 
                             type="submit"

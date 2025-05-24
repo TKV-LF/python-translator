@@ -15,6 +15,7 @@ import json
 import logging
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from datetime import datetime
+from fastapi.responses import FileResponse
 
 
 load_dotenv()
@@ -32,12 +33,8 @@ if os.path.exists(static_dir):
 
 templates = Jinja2Templates(directory="app/templates")
 
-# API Keys configuration
-API_KEYS = [
-    os.getenv(f"OPENROUTER_API_KEY_{i}") for i in range(1, 5)
-]
+
 current_api_key_index = 0
-OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 DICHTIENGHOA_URL = "https://dichtienghoa.com/transtext"
 VIETPHRASE_URL = "http://vietphrase.info/VietPhrase/Browser"
 
@@ -196,92 +193,6 @@ async def translate_chunk_dichtienghoa(chunk: str, semaphore: asyncio.Semaphore)
         
         return str(soup)
 
-async def translate_chunk(chunk: str, semaphore: asyncio.Semaphore) -> str:
-    """Translate a chunk using OpenRouter with rate limiting."""
-    if not chunk.strip():
-        return ""
-        
-    async with semaphore:
-        # Extract text content while preserving HTML structure
-        soup = BeautifulSoup(chunk, 'html.parser')
-        
-        # Collect all text nodes and their positions
-        text_nodes = []
-        text_contents = []
-        for text_node in soup.find_all(text=True):
-            if isinstance(text_node, NavigableString) and text_node.strip():
-                text_nodes.append(text_node)
-                text_contents.append(text_node.strip())
-        
-        if not text_contents:
-            return chunk
-            
-        # Combine all text with a special separator
-        combined_text = "\n[SEP]\n".join(text_contents)
-        
-        # Translate all text at once using OpenRouter
-        translated_text = await translate_with_openrouter(combined_text)
-        
-        # Split and replace translations
-        if translated_text and translated_text != combined_text:
-            translations = translated_text.split("\n[SEP]\n")
-            for text_node, translation in zip(text_nodes, translations):
-                if translation.strip():
-                    text_node.replace_with(translation.strip())
-        
-        return str(soup)
-
-async def translate_with_openrouter(text: str) -> str:
-    """Translate text using OpenRouter API."""
-    if not text.strip():
-        return ""
-    
-    # Check cache
-    cache_key = f"or:{text.strip()}"
-    if cache_key in translation_cache:
-        return translation_cache[cache_key]
-
-    api_key = get_next_api_key()
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
-    
-    data = {
-        "model": "deepseek/deepseek-chat:free",
-        "messages": [
-            {
-                "role": "system",
-                "content": "You are a Chinese to Vietnamese translator. Translate the following text accurately while preserving any HTML formatting."
-            },
-            {
-                "role": "user",
-                "content": text
-            }
-        ]
-    }
-
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                OPENROUTER_API_URL,
-                json=data,
-                headers=headers
-            )
-            print(response)
-            response.raise_for_status()
-            print(response.text)
-            result = response.json()
-            
-            if result.get('choices') and result['choices'][0].get('message'):
-                translation = result['choices'][0]['message']['content']
-                translation_cache[cache_key] = translation
-                return translation
-            return text
-    except Exception as e:
-        print(f"OpenRouter translation error: {str(e)}")
-        return text
-
 async def translate_content(content: str, method: TranslationMethod = "openrouter") -> str:
     """Translate content using specified method."""
     if not content.strip():
@@ -294,7 +205,7 @@ async def translate_content(content: str, method: TranslationMethod = "openroute
     semaphore = asyncio.Semaphore(CONCURRENT_TRANSLATIONS)
     
     # Choose translation function based on method
-    translate_func = translate_chunk if method == "openrouter" else translate_chunk_dichtienghoa
+    translate_func = translate_chunk_dichtienghoa
     
     # Translate chunks in parallel
     tasks = [translate_func(chunk, semaphore) for chunk in chunks]
@@ -396,62 +307,74 @@ async def extract_content(url: str, method: TranslationMethod = "base") -> tuple
     async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
         try:
             # If using VietPhrase, handle differently
+            translated_content = None
+            translated_title = None
             if method == "vietphrase":
-                translated_content = await translate_with_vietphrase(url)
-                if translated_content:
-                    return "VietPhrase Translation", translated_content
-                raise HTTPException(status_code=400, detail="VietPhrase translation failed")
-            
-            # Extract title first
-            response = await client.get(url, headers=headers, follow_redirects=True)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            # Extract title first
-            title = soup.title.string if soup.title else "Unknown Title"
-            
-            # Find the main content
-            content = None
-            # The above code appears to be a comment in Python. It starts with a "#" symbol, which
-            # indicates that it is a single-line comment. The text "identifierClasses" seems to be a
-            # placeholder or a note about the content of the code. Comments are used to provide
-            # explanations or notes within the code for better understanding by developers.
-            identifierClasses = ['page-content', 'print', 'mybox', 'text-data', 'chapter-content', 'article-content']
-            
-            # Special handling for shuhaige.net
-            if url.startswith('https://m.shuhaige.net') or url.startswith('https://www.shuhaige.net'):
-                identifierClasses = ['headeline', 'pager', 'content']
-                merged_content = soup.new_tag('div')
-                merged_content['class'] = 'merged-content'
-                for class_name in identifierClasses:
-                    found_element = soup.find(class_=re.compile(class_name))
-                    if found_element:
-                        element_copy = found_element.decode_contents()
-                        merged_content.append(BeautifulSoup(element_copy, 'html.parser'))
-                content = merged_content
-            else: 
-                for class_name in identifierClasses:
-                    content = soup.find(class_=re.compile(class_name))
-                    if content:
-                        break
-            
-            if not content:
-                raise HTTPException(status_code=400, detail="Could not find novel content")
-            
-            # Clean up content and remove duplicates
-            content = clean_content(content)
-            
-            # Update links
-            for link in content.find_all('a', href=True):
-                original_href = link['href']
-                modified_href = await modify_url(original_href, url)
-                link['href'] = f"{modified_href}&method={method}"
-                link['data-original-href'] = original_href
-            
-            # Translate title and content
-            translated_title = await translate_content(title, method)
-            translated_content = await translate_content(str(content), method)
-            
+                extracted_content = await translate_with_vietphrase(url)
+                print(extracted_content)
+                if extracted_content:
+                    translated_title = "VietPhrase Translation"
+                    translated_content = extracted_content
+                else:
+                    raise HTTPException(status_code=400, detail="VietPhrase translation failed")
+            else:
+                # Extract title first
+                response = await client.get(url, headers=headers, follow_redirects=True)
+                response.raise_for_status()
+                soup = BeautifulSoup(response.text, 'html.parser')
+                
+                # Extract title first
+                title = soup.title.string if soup.title else "Unknown Title"
+                
+                # Find the main content
+                content = None
+                # The above code appears to be a comment in Python. It starts with a "#" symbol, which
+                # indicates that it is a single-line comment. The text "identifierClasses" seems to be a
+                # placeholder or a note about the content of the code. Comments are used to provide
+                # explanations or notes within the code for better understanding by developers.
+                identifierClasses = ['page-content', 'print', 'mybox', 'text-data', 'chapter-content', 'article-content']
+                
+                # Special handling for shuhaige.net
+                if url.startswith('https://m.shuhaige.net') or url.startswith('https://www.shuhaige.net'):
+                    identifierClasses = ['headeline', 'pager', 'content']
+                    merged_content = soup.new_tag('div')
+                    merged_content['class'] = 'merged-content'
+                    for class_name in identifierClasses:
+                        found_element = soup.find(class_=re.compile(class_name))
+                        if found_element:
+                            element_copy = found_element.decode_contents()
+                            merged_content.append(BeautifulSoup(element_copy, 'html.parser'))
+                    content = merged_content
+                else: 
+                    for class_name in identifierClasses:
+                        content = soup.find(class_=re.compile(class_name))
+                        if content:
+                            break
+                
+                if not content:
+                    raise HTTPException(status_code=400, detail="Could not find novel content")
+                
+                # Clean up content and remove duplicates
+                content = clean_content(content)
+                
+                # Update links
+                for link in content.find_all('a', href=True):
+                    original_href = link['href']
+                    modified_href = await modify_url(original_href, url)
+                    link['href'] = f"{modified_href}&method={method}"
+                    link['data-original-href'] = original_href
+                
+                # Translate title and content
+                translated_title = await translate_content(title, "base")
+                translated_content = await translate_content(str(content), "base")
+                
+                # Clean up any HTML tags in the translated content
+
+
+           
+            # Remove any remaining HTML entities
+            translated_content = html.unescape(translated_content)
+            translated_content = re.sub(r'<p></p>', '', translated_content)
             return translated_title, translated_content
             
         except Exception as e:
@@ -471,7 +394,6 @@ async def startup_event():
     logger.info("Application starting up...")
     # Log environment variables (excluding sensitive data)
     logger.info(f"PORT: {os.getenv('PORT')}")
-    logger.info("API Keys configured: %s", bool(API_KEYS[0]))
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -494,7 +416,7 @@ async def home(request: Request):
     )
 
 @app.get("/translate", response_class=HTMLResponse)
-async def translate(request: Request, url: str, method: TranslationMethod = "openrouter"):
+async def translate(request: Request, url: str, method: TranslationMethod = "base"):
     try:
         title, content = await extract_content(url, method)
         return templates.TemplateResponse(
@@ -541,3 +463,7 @@ async def custom_http_exception_handler(request: Request, exc: StarletteHTTPExce
         },
         status_code=exc.status_code
     ) 
+    
+@app.get("/img/{filename}")
+async def send_file(filename: str):
+    return FileResponse(f"{static_dir}/img/{filename}")
