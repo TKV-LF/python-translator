@@ -275,6 +275,144 @@
         {% block content %}{% endblock %}
     </main>
 
+    <!-- Word Replace Button -->
+    <button id="wordReplaceBtn" class="scroll-button" style="bottom: 160px; display: none;" title="Word Replacements">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+        </svg>
+    </button>
+
+    <!-- Word Replace Modal -->
+    <div id="wordReplaceModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-[rgb(30,30,32)] p-6 rounded-lg shadow-xl max-w-[800px] w-full mx-4">
+            <h2 class="text-xl font-bold mb-4">Word Replacements</h2>
+            
+            <!-- Import/Export buttons -->
+            <div class="mb-4 flex space-x-2">
+                <button id="exportListsBtn" class="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Export Lists
+                </button>
+                <label class="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm cursor-pointer flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L7 8m4-4v12" />
+                    </svg>
+                    Import Lists
+                    <input type="file" id="importListsInput" class="hidden" accept=".json">
+                </label>
+            </div>
+
+            <!-- Replacement List Selection -->
+            <div class="mb-4">
+                <label class="block text-sm mb-2">Select replacement list to apply:</label>
+                <div class="flex space-x-2">
+                    <select id="bookSelect" class="flex-1 px-3 py-2 bg-[rgb(39,39,41)] border border-[rgb(55,55,57)] rounded">
+                        <option value="">Choose a list...</option>
+                    </select>
+                    <button id="addBookBtn" class="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 whitespace-nowrap">
+                        + New List
+                    </button>
+                </div>
+            </div>
+
+            <!-- Apply to Current Page -->
+            <div id="applyToPageSection" class="mb-4 p-3 bg-[rgb(35,35,37)] rounded border border-[rgb(55,55,57)] hidden">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm" id="currentListTitle"></span>
+                    <button id="applyToPageBtn" class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
+                        Apply to Current Page
+                    </button>
+                </div>
+            </div>
+
+            <!-- Add new replacement form -->
+            <form id="addReplacementForm" class="mb-4 hidden">
+                <div class="flex flex-col space-y-2">
+                    <input type="text" id="originalWord" placeholder="Original word" 
+                           class="px-3 py-2 bg-[rgb(39,39,41)] border border-[rgb(55,55,57)] rounded">
+                    <input type="text" id="replacementWord" placeholder="Replacement word" 
+                           class="px-3 py-2 bg-[rgb(39,39,41)] border border-[rgb(55,55,57)] rounded">
+                    <button type="submit" 
+                            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        Add Replacement
+                    </button>
+                </div>
+            </form>
+
+            <!-- Replacements list -->
+            <div id="replacementsContainer" class="hidden">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="font-bold text-sm text-gray-400">Current List:</h3>
+                    <div class="space-x-2">
+                        <button id="renameListBtn" class="px-2 py-1 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700">
+                            Rename
+                        </button>
+                        <button id="deleteBookBtn" class="px-2 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700">
+                            Delete List
+                        </button>
+                    </div>
+                </div>
+                <div class="max-h-60 overflow-y-auto">
+                    <table id="replacementsTable" class="w-full">
+                        <thead>
+                            <tr>
+                                <th class="text-left pb-2">Original</th>
+                                <th class="text-left pb-2">Replacement</th>
+                                <th class="text-left pb-2">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Close button -->
+            <button id="closeModal" class="mt-4 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
+                Close
+            </button>
+        </div>
+    </div>
+
+    <!-- Add List Modal -->
+    <div id="addBookModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-[rgb(30,30,32)] p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <h2 class="text-xl font-bold mb-4">Create New Replacement List</h2>
+            <form id="addBookForm" class="space-y-4">
+                <input type="text" id="bookTitle" placeholder="List name (e.g., Common Names, Titles, etc.)" required
+                       class="w-full px-3 py-2 bg-[rgb(39,39,41)] border border-[rgb(55,55,57)] rounded">
+                <div class="flex space-x-2">
+                    <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                        Create
+                    </button>
+                    <button type="button" id="cancelAddBook" class="flex-1 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Rename List Modal -->
+    <div id="renameListModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-[rgb(30,30,32)] p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <h2 class="text-xl font-bold mb-4">Rename List</h2>
+            <form id="renameListForm" class="space-y-4">
+                <input type="text" id="newListTitle" placeholder="New list name" required
+                       class="w-full px-3 py-2 bg-[rgb(39,39,41)] border border-[rgb(55,55,57)] rounded">
+                <div class="flex space-x-2">
+                    <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                        Rename
+                    </button>
+                    <button type="button" id="cancelRename" class="flex-1 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Scroll buttons -->
     <button id="scrollToTop" class="scroll-button" title="Scroll to top" style="display: none;">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -289,6 +427,390 @@
     </button>
 
     <script>
+        // Word replacement functionality
+        const wordReplaceBtn = document.getElementById('wordReplaceBtn');
+        const wordReplaceModal = document.getElementById('wordReplaceModal');
+        const addBookModal = document.getElementById('addBookModal');
+        const renameListModal = document.getElementById('renameListModal');
+        const closeModal = document.getElementById('closeModal');
+        const addReplacementForm = document.getElementById('addReplacementForm');
+        const replacementsTable = document.getElementById('replacementsTable').querySelector('tbody');
+        const bookSelect = document.getElementById('bookSelect');
+        const addBookBtn = document.getElementById('addBookBtn');
+        const addBookForm = document.getElementById('addBookForm');
+        const renameListForm = document.getElementById('renameListForm');
+        const cancelAddBook = document.getElementById('cancelAddBook');
+        const cancelRename = document.getElementById('cancelRename');
+        const deleteBookBtn = document.getElementById('deleteBookBtn');
+        const renameListBtn = document.getElementById('renameListBtn');
+        const replacementsContainer = document.getElementById('replacementsContainer');
+        const currentListTitle = document.getElementById('currentListTitle');
+        const applyToPageSection = document.getElementById('applyToPageSection');
+        const applyToPageBtn = document.getElementById('applyToPageBtn');
+        const exportListsBtn = document.getElementById('exportListsBtn');
+        const importListsInput = document.getElementById('importListsInput');
+
+        // Show/hide modals
+        wordReplaceBtn.addEventListener('click', () => {
+            wordReplaceModal.style.display = 'flex';
+            loadLists();
+            // Select the active list if exists
+            const activeListId = localStorage.getItem('activeReplacementList');
+            if (activeListId) {
+                bookSelect.value = activeListId;
+                bookSelect.dispatchEvent(new Event('change'));
+            }
+        });
+
+        closeModal.addEventListener('click', () => {
+            wordReplaceModal.style.display = 'none';
+        });
+
+        // Close modals when clicking outside
+        [wordReplaceModal, addBookModal, renameListModal].forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        });
+
+        // List management
+        addBookBtn.addEventListener('click', () => {
+            addBookModal.style.display = 'flex';
+        });
+
+        [cancelAddBook, cancelRename].forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.closest('.fixed').style.display = 'none';
+            });
+        });
+
+        addBookForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const listTitle = document.getElementById('bookTitle').value.trim();
+            if (listTitle) {
+                const lists = JSON.parse(localStorage.getItem('books') || '[]');
+                const listId = Date.now().toString();
+                lists.push({ id: listId, title: listTitle });
+                localStorage.setItem('books', JSON.stringify(lists));
+                localStorage.setItem(`replacements_${listId}`, '[]');
+                
+                document.getElementById('bookTitle').value = '';
+                addBookModal.style.display = 'none';
+                loadLists();
+            }
+        });
+
+        renameListBtn.addEventListener('click', () => {
+            const listId = bookSelect.value;
+            if (listId) {
+                const lists = JSON.parse(localStorage.getItem('books') || '[]');
+                const currentList = lists.find(l => l.id === listId);
+                if (currentList) {
+                    document.getElementById('newListTitle').value = currentList.title;
+                    renameListModal.style.display = 'flex';
+                }
+            }
+        });
+
+        renameListForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const listId = bookSelect.value;
+            const newTitle = document.getElementById('newListTitle').value.trim();
+            if (listId && newTitle) {
+                const lists = JSON.parse(localStorage.getItem('books') || '[]');
+                const listIndex = lists.findIndex(l => l.id === listId);
+                if (listIndex !== -1) {
+                    lists[listIndex].title = newTitle;
+                    localStorage.setItem('books', JSON.stringify(lists));
+                    renameListModal.style.display = 'none';
+                    loadLists();
+                    // Update current list title if displayed
+                    currentListTitle.textContent = newTitle;
+                }
+            }
+        });
+
+        deleteBookBtn.addEventListener('click', () => {
+            const listId = bookSelect.value;
+            if (listId && confirm('Are you sure you want to delete this replacement list?')) {
+                const lists = JSON.parse(localStorage.getItem('books') || '[]');
+                const updatedLists = lists.filter(list => list.id !== listId);
+                localStorage.setItem('books', JSON.stringify(updatedLists));
+                localStorage.removeItem(`replacements_${listId}`);
+                
+                // If this was the active list, remove it from active
+                if (localStorage.getItem('activeReplacementList') === listId) {
+                    localStorage.removeItem('activeReplacementList');
+                }
+                
+                loadLists();
+                hideReplacements();
+            }
+        });
+
+        // Load lists into select
+        function loadLists() {
+            const lists = JSON.parse(localStorage.getItem('books') || '[]');
+            const activeListId = localStorage.getItem('activeReplacementList');
+            
+            bookSelect.innerHTML = '<option value="">Choose a list...</option>';
+            lists.forEach(list => {
+                const option = document.createElement('option');
+                option.value = list.id;
+                option.textContent = list.id === activeListId ? `${list.title} (Active)` : list.title;
+                if (list.id === activeListId) {
+                    option.classList.add('font-bold');
+                }
+                bookSelect.appendChild(option);
+            });
+        }
+
+        // List selection change
+        bookSelect.addEventListener('change', () => {
+            const listId = bookSelect.value;
+            if (listId) {
+                const lists = JSON.parse(localStorage.getItem('books') || '[]');
+                const list = lists.find(l => l.id === listId);
+                if (list) {
+                    currentListTitle.textContent = list.title;
+                    addReplacementForm.style.display = 'block';
+                    replacementsContainer.style.display = 'block';
+                    applyToPageSection.style.display = 'block';
+                    loadReplacements(listId);
+                }
+            } else {
+                hideReplacements();
+            }
+        });
+
+        function hideReplacements() {
+            addReplacementForm.style.display = 'none';
+            replacementsContainer.style.display = 'none';
+            applyToPageSection.style.display = 'none';
+            replacementsTable.innerHTML = '';
+        }
+
+        // Load replacements for selected list
+        function loadReplacements(listId) {
+            const replacements = JSON.parse(localStorage.getItem(`replacements_${listId}`) || '[]');
+            replacementsTable.innerHTML = '';
+            
+            replacements.forEach((replacement, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="py-2">${replacement.original}</td>
+                    <td class="py-2">${replacement.replacement}</td>
+                    <td class="py-2">
+                        <button onclick="deleteReplacement('${listId}', ${index})" 
+                                class="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700">
+                            Delete
+                        </button>
+                    </td>
+                `;
+                replacementsTable.appendChild(row);
+            });
+        }
+
+        // Add new replacement
+        addReplacementForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const listId = bookSelect.value;
+            if (!listId) return;
+
+            const originalWord = document.getElementById('originalWord').value.trim();
+            const replacementWord = document.getElementById('replacementWord').value.trim();
+
+            if (originalWord && replacementWord) {
+                const replacements = JSON.parse(localStorage.getItem(`replacements_${listId}`) || '[]');
+                replacements.push({ original: originalWord, replacement: replacementWord });
+                localStorage.setItem(`replacements_${listId}`, JSON.stringify(replacements));
+
+                // Clear form
+                document.getElementById('originalWord').value = '';
+                document.getElementById('replacementWord').value = '';
+
+                // Reload replacements
+                loadReplacements(listId);
+            }
+        });
+
+        // Delete replacement
+        window.deleteReplacement = function(listId, index) {
+            const replacements = JSON.parse(localStorage.getItem(`replacements_${listId}`) || '[]');
+            replacements.splice(index, 1);
+            localStorage.setItem(`replacements_${listId}`, JSON.stringify(replacements));
+            loadReplacements(listId);
+        };
+
+        // Apply replacements to page content
+        applyToPageBtn.addEventListener('click', function() {
+            const listId = bookSelect.value;
+            if (listId) {
+                // Store the active list ID
+                localStorage.setItem('activeReplacementList', listId);
+                applyReplacements(listId);
+                
+                // Update button state to show it's active
+                applyToPageBtn.textContent = 'Applied ✓';
+                applyToPageBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                applyToPageBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                
+                setTimeout(() => {
+                    applyToPageBtn.textContent = 'Apply to Current Page';
+                    applyToPageBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                    applyToPageBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                }, 2000);
+            }
+        });
+
+        function applyReplacements(listId) {
+            const replacements = JSON.parse(localStorage.getItem(`replacements_${listId}`) || '[]');
+            const content = document.querySelector('.novel-content');
+            
+            if (content && replacements.length > 0) {
+                let html = content.innerHTML;
+                replacements.forEach(({ original, replacement }) => {
+                    const regex = new RegExp(original, 'gi');
+                    html = html.replace(regex, replacement);
+                });
+                content.innerHTML = html;
+            }
+        }
+
+        // Apply active list's replacements when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            const activeListId = localStorage.getItem('activeReplacementList');
+            if (activeListId) {
+                const lists = JSON.parse(localStorage.getItem('books') || '[]');
+                const activeList = lists.find(l => l.id === activeListId);
+                if (activeList) {
+                    // Apply replacements from the active list
+                    applyReplacements(activeListId);
+                    
+                    // Update the button in the word replacement modal if it's open
+                    if (wordReplaceModal.style.display === 'flex') {
+                        bookSelect.value = activeListId;
+                        bookSelect.dispatchEvent(new Event('change'));
+                    }
+                } else {
+                    // If the active list no longer exists, remove it
+                    localStorage.removeItem('activeReplacementList');
+                }
+            }
+        });
+
+        // Export functionality
+        exportListsBtn.addEventListener('click', async () => {
+            // Get all lists
+            const lists = JSON.parse(localStorage.getItem('books') || '[]');
+            const exportData = {
+                lists: lists,
+                replacements: {},
+                activeListId: localStorage.getItem('activeReplacementList')
+            };
+
+            // Get replacements for each list
+            for (const list of lists) {
+                exportData.replacements[list.id] = JSON.parse(
+                    localStorage.getItem(`replacements_${list.id}`) || '[]'
+                );
+            }
+
+            // Create and download file
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `word-replacements-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // Import functionality
+        importListsInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const importData = JSON.parse(event.target.result);
+                    
+                    // Validate import data structure
+                    if (!importData.lists || !importData.replacements) {
+                        throw new Error('Invalid import file format');
+                    }
+
+                    // Get existing lists
+                    const existingLists = JSON.parse(localStorage.getItem('books') || '[]');
+                    const existingIds = new Set(existingLists.map(l => l.id));
+
+                    // Prepare new lists with unique IDs
+                    const newLists = importData.lists.map(list => {
+                        const oldId = list.id;
+                        // If ID exists, generate new one
+                        if (existingIds.has(list.id)) {
+                            list.id = Date.now() + Math.random().toString(36).substr(2, 9);
+                        }
+                        // Copy replacements with new ID
+                        if (importData.replacements[oldId]) {
+                            localStorage.setItem(
+                                `replacements_${list.id}`,
+                                JSON.stringify(importData.replacements[oldId])
+                            );
+                        }
+                        return list;
+                    });
+
+                    // Merge lists
+                    const mergedLists = [...existingLists, ...newLists];
+                    localStorage.setItem('books', JSON.stringify(mergedLists));
+
+                    // Handle active list
+                    if (importData.activeListId) {
+                        const importedActiveList = importData.lists.find(l => l.id === importData.activeListId);
+                        if (importedActiveList) {
+                            localStorage.setItem('activeReplacementList', importedActiveList.id);
+                        }
+                    }
+
+                    // Reload lists in UI
+                    loadLists();
+                    
+                    // Show success message
+                    showNotification('Lists imported successfully!', 'success');
+                } catch (error) {
+                    console.error('Import error:', error);
+                    showNotification('Error importing lists. Please check the file format.', 'error');
+                }
+
+                // Clear input
+                importListsInput.value = '';
+            };
+
+            reader.readAsText(file);
+        });
+
+        // Notification system
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `fixed bottom-4 right-4 px-6 py-3 rounded shadow-lg text-white ${
+                type === 'success' ? 'bg-green-600' : 'bg-red-600'
+            }`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+    </script>
+
+    <script>
         const scrollToTop = document.getElementById('scrollToTop');
         const scrollToBottom = document.getElementById('scrollToBottom');
         
@@ -297,9 +819,11 @@
             if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
                 scrollToTop.style.display = "flex";
                 scrollToBottom.style.display = "flex";
+                wordReplaceBtn.style.display = "flex";
             } else {
                 scrollToTop.style.display = "none";
                 scrollToBottom.style.display = "none";
+                wordReplaceBtn.style.display = "none";
             }
         };
         
