@@ -631,8 +631,9 @@
                 document.getElementById('originalWord').value = '';
                 document.getElementById('replacementWord').value = '';
 
-                // Reload replacements
+                // Reload replacements table and apply changes immediately
                 loadReplacements(listId);
+                applyReplacements(listId);
             }
         });
 
@@ -642,40 +643,47 @@
             replacements.splice(index, 1);
             localStorage.setItem(`replacements_${listId}`, JSON.stringify(replacements));
             loadReplacements(listId);
+            // Re-apply replacements after deletion
+            applyReplacements(listId);
         };
 
         // Apply replacements to page content
-        applyToPageBtn.addEventListener('click', function() {
-            const listId = bookSelect.value;
-            if (listId) {
-                // Store the active list ID
-                localStorage.setItem('activeReplacementList', listId);
-                applyReplacements(listId);
-                
-                // Update button state to show it's active
-                applyToPageBtn.textContent = 'Applied ✓';
-                applyToPageBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-                applyToPageBtn.classList.add('bg-green-600', 'hover:bg-green-700');
-                
-                setTimeout(() => {
-                    applyToPageBtn.textContent = 'Apply to Current Page';
-                    applyToPageBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
-                    applyToPageBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
-                }, 2000);
-            }
-        });
-
         function applyReplacements(listId) {
             const replacements = JSON.parse(localStorage.getItem(`replacements_${listId}`) || '[]');
             const content = document.querySelector('.novel-content');
             
             if (content && replacements.length > 0) {
-                let html = content.innerHTML;
-                replacements.forEach(({ original, replacement }) => {
-                    const regex = new RegExp(original, 'gi');
-                    html = html.replace(regex, replacement);
+                // Get all text nodes in the content
+                const walker = document.createTreeWalker(
+                    content,
+                    NodeFilter.SHOW_TEXT,
+                    null,
+                    false
+                );
+
+                const nodes = [];
+                let node;
+                while (node = walker.nextNode()) {
+                    nodes.push(node);
+                }
+
+                // Apply replacements to each text node
+                nodes.forEach(textNode => {
+                    let text = textNode.nodeValue;
+                    let hasChanges = false;
+
+                    replacements.forEach(({ original, replacement }) => {
+                        const regex = new RegExp(original, 'gi');
+                        if (regex.test(text)) {
+                            text = text.replace(regex, replacement);
+                            hasChanges = true;
+                        }
+                    });
+
+                    if (hasChanges) {
+                        textNode.nodeValue = text;
+                    }
                 });
-                content.innerHTML = html;
             }
         }
 
@@ -687,7 +695,9 @@
                 const activeList = lists.find(l => l.id === activeListId);
                 if (activeList) {
                     // Apply replacements from the active list
-                    applyReplacements(activeListId);
+                    setTimeout(() => {
+                        applyReplacements(activeListId);
+                    }, 500); // Small delay to ensure content is loaded
                     
                     // Update the button in the word replacement modal if it's open
                     if (wordReplaceModal.style.display === 'flex') {
@@ -700,6 +710,24 @@
                 }
             }
         });
+
+        // Also apply replacements when the page content might change (e.g., dynamic loading)
+        const observer = new MutationObserver((mutations) => {
+            const activeListId = localStorage.getItem('activeReplacementList');
+            if (activeListId) {
+                applyReplacements(activeListId);
+            }
+        });
+
+        // Start observing the content for changes
+        const content = document.querySelector('.novel-content');
+        if (content) {
+            observer.observe(content, {
+                childList: true,
+                subtree: true,
+                characterData: true
+            });
+        }
 
         // Export functionality
         exportListsBtn.addEventListener('click', async () => {
