@@ -965,26 +965,38 @@
 
         // Copy JSON functionality
         copyJsonBtn.addEventListener('click', () => {
-            const jsonText = document.getElementById('jsonTextarea').value.trim();
-            
-            if (!jsonText) {
-                showNotification('Please paste JSON content', 'error');
-                return;
+            // Get all lists
+            const lists = JSON.parse(localStorage.getItem('books') || '[]');
+            const exportData = {
+                lists: lists,
+                replacements: {},
+                activeListId: localStorage.getItem('activeReplacementList')
+            };
+
+            // Get replacements for each list
+            for (const list of lists) {
+                exportData.replacements[list.id] = JSON.parse(
+                    localStorage.getItem(`replacements_${list.id}`) || '[]'
+                );
             }
 
-            try {
-                const textToCopy = jsonText.replace(/\\n/g, '\n');
-                const tempInput = document.createElement('input');
-                tempInput.value = textToCopy;
+            const jsonString = JSON.stringify(exportData, null, 2);
+            // Use Clipboard API if available
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(jsonString).then(() => {
+                    showNotification('JSON copied to clipboard!', 'success');
+                }).catch(() => {
+                    showNotification('Error copying JSON to clipboard.', 'error');
+                });
+            } else {
+                // Fallback for older browsers
+                const tempInput = document.createElement('textarea');
+                tempInput.value = jsonString;
                 document.body.appendChild(tempInput);
                 tempInput.select();
                 document.execCommand('copy');
                 document.body.removeChild(tempInput);
-                
                 showNotification('JSON copied to clipboard!', 'success');
-            } catch (error) {
-                console.error('Copy JSON error:', error);
-                showNotification('Error copying JSON to clipboard.', 'error');
             }
         });
     </script>
