@@ -305,6 +305,12 @@
                         </svg>
                         Export
                     </button>
+                    <button id="copyJsonBtn" class="px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16h8M8 12h8m-7 8h6a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        Copy JSON
+                    </button>
                     <label class="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm cursor-pointer flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L7 8m4-4v12" />
@@ -488,6 +494,7 @@
         const exportListsBtn = document.getElementById('exportListsBtn');
         const importListsInput = document.getElementById('importListsInput');
         const pasteJsonBtn = document.getElementById('pasteJsonBtn');
+        const copyJsonBtn = document.getElementById('copyJsonBtn');
 
         // Show/hide modals
         wordReplaceBtn.addEventListener('click', () => {
@@ -955,6 +962,31 @@
                 notification.remove();
             }, 3000);
         }
+
+        // Copy JSON functionality
+        copyJsonBtn.addEventListener('click', () => {
+            const jsonText = document.getElementById('jsonTextarea').value.trim();
+            
+            if (!jsonText) {
+                showNotification('Please paste JSON content', 'error');
+                return;
+            }
+
+            try {
+                const textToCopy = jsonText.replace(/\\n/g, '\n');
+                const tempInput = document.createElement('input');
+                tempInput.value = textToCopy;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
+                
+                showNotification('JSON copied to clipboard!', 'success');
+            } catch (error) {
+                console.error('Copy JSON error:', error);
+                showNotification('Error copying JSON to clipboard.', 'error');
+            }
+        });
     </script>
 
     <script>
