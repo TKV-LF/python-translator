@@ -324,6 +324,12 @@
                         </svg>
                         Paste JSON
                     </button>
+                    <button id="clearAllBtn" class="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Clear All
+                    </button>
                 </div>
 
                 <!-- Replacement List Selection -->
@@ -495,6 +501,7 @@
         const importListsInput = document.getElementById('importListsInput');
         const pasteJsonBtn = document.getElementById('pasteJsonBtn');
         const copyJsonBtn = document.getElementById('copyJsonBtn');
+        const clearAllBtn = document.getElementById('clearAllBtn');
 
         // Show/hide modals
         wordReplaceBtn.addEventListener('click', () => {
@@ -720,6 +727,12 @@
             
             if (!content || replacements.length === 0) return;
 
+            // Sort replacements by original text length (longest first)
+            // This ensures longer patterns are matched before shorter ones
+            const sortedReplacements = replacements.sort((a, b) => {
+                return b.original.trim().length - a.original.trim().length;
+            });
+
             // Create a TreeWalker to find all text nodes
             const walker = document.createTreeWalker(
                 content,
@@ -748,14 +761,26 @@
                 let text = textNode.nodeValue;
                 let hasChanges = false;
 
-                replacements.forEach(({ original, replacement }) => {
+                sortedReplacements.forEach(({ original, replacement }) => {
                     // Trim and normalize the original word
                     const trimmedOriginal = original.trim();
                     if (trimmedOriginal.length === 0) return;
 
-                    // Create regex with word boundaries for better matching
-                    // Use case-insensitive flag and global flag
-                    const regex = new RegExp(trimmedOriginal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+                    // Escape special regex characters
+                    const escapedOriginal = trimmedOriginal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    
+                    // Create regex with word boundaries to match complete words only
+                    // Use \b for word boundaries, but handle Vietnamese text properly
+                    let regex;
+                    
+                    // Check if the original contains spaces (phrase replacement)
+                    if (trimmedOriginal.includes(' ')) {
+                        // For phrases, use exact match with word boundaries at start and end
+                        regex = new RegExp(`\\b${escapedOriginal}\\b`, 'gi');
+                    } else {
+                        // For single words, use word boundaries
+                        regex = new RegExp(`\\b${escapedOriginal}\\b`, 'gi');
+                    }
                     
                     if (regex.test(text)) {
                         text = text.replace(regex, replacement.trim());
@@ -997,6 +1022,27 @@
                 document.execCommand('copy');
                 document.body.removeChild(tempInput);
                 showNotification('JSON copied to clipboard!', 'success');
+            }
+        });
+
+        // Clear all lists functionality
+        clearAllBtn.addEventListener('click', () => {
+            if (confirm('Are you sure you want to clear all replacement lists? This action cannot be undone.')) {
+                // Get all lists and clear their data
+                const lists = JSON.parse(localStorage.getItem('books') || '[]');
+                lists.forEach(list => {
+                    localStorage.removeItem(`replacements_${list.id}`);
+                });
+                
+                // Clear the lists and active list
+                localStorage.removeItem('books');
+                localStorage.removeItem('activeReplacementList');
+                
+                // Reload the UI
+                loadLists();
+                hideReplacements();
+                
+                showNotification('All replacement lists cleared!', 'success');
             }
         });
     </script>
