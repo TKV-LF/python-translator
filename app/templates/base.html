@@ -769,21 +769,19 @@
                     // Escape special regex characters
                     const escapedOriginal = trimmedOriginal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                     
-                    // Create regex with word boundaries to match complete words only
-                    // Use \b for word boundaries, but handle Vietnamese text properly
+                    // Create custom word boundaries for Vietnamese text
+                    // Define word separators (not just \b which doesn't work well with Vietnamese)
+                    const wordSeparators = '[\\s\\.,;:!?\\-\\(\\)\\[\\]\\{\\}"\']';
+                    
                     let regex;
                     
-                    // Check if the original contains spaces (phrase replacement)
-                    if (trimmedOriginal.includes(' ')) {
-                        // For phrases, use exact match with word boundaries at start and end
-                        regex = new RegExp(`\\b${escapedOriginal}\\b`, 'gi');
-                    } else {
-                        // For single words, use word boundaries
-                        regex = new RegExp(`\\b${escapedOriginal}\\b`, 'gi');
-                    }
+                    // Use custom word boundaries instead of \b
+                    // Look for the pattern surrounded by word separators or start/end of string
+                    regex = new RegExp(`(^|${wordSeparators})(${escapedOriginal})(?=${wordSeparators}|$)`, 'gi');
                     
                     if (regex.test(text)) {
-                        text = text.replace(regex, replacement.trim());
+                        // Replace while preserving the separators
+                        text = text.replace(regex, `$1${replacement.trim()}`);
                         hasChanges = true;
                     }
                 });
