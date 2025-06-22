@@ -24,6 +24,9 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Initialize API keys (currently not used for dichtienghoa/vietphrase)
+API_KEYS = []
+
 app = FastAPI()
 
 # Only mount static files if directory exists
@@ -222,13 +225,13 @@ async def modify_url(url: str, base_url: str) -> str:
     # Remove @ prefix if present
     if url.startswith('@'):
         url = url[1:]
-    
     # Handle protocol-relative URLs (starting with //)
     if url.startswith('//'):
         url = f"https:{url}"
     
     # Clean up multiple forward slashes and redundant domain names
     parsed = urlparse(url)
+
     if parsed.netloc:
         # Split path by the domain name to remove redundant occurrences
         path_parts = parsed.path.split(parsed.netloc)
@@ -244,13 +247,106 @@ async def modify_url(url: str, base_url: str) -> str:
     
     # Handle relative URLs
     parsed = urlparse(url)
+
     if not parsed.netloc:
         url = urljoin(base_url, url)
     
+    print(url)
     return f"/translate?url={url}"
 
+async def translate_with_vietphrase_api(content: str) -> str:
+    """Translate content using VietPhrase TranslateHanViet API."""
+    vietphrase_translate_url = "https://vietphrase.info/Vietphrase/TranslateVietPhraseS"
+    
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Origin": "https://vietphrase.info",
+        "Referer": "https://vietphrase.info/"
+    }
+    
+    # Try form data instead of JSON
+    payload = {
+        "chineseContent": content
+    }
+    
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            # Try POST with form data
+            response = await client.post(
+                vietphrase_translate_url,
+                data=payload,
+                headers=headers
+            )
+            response.raise_for_status()
+            
+            # Parse the response
+            response_text = response.text
+            # Check if response is JSON
+            if response_text and len(response_text) > 10:
+                return response_text
+                
+    except Exception as e:
+        print(f"VietPhrase API translation error: {str(e)}")
+        # Fallback to dichtienghoa translation
+        try:
+            print("Trying dichtienghoa as backup...")
+            return await translate_content(content, "base")
+        except Exception as fallback_e:
+            print(f"Backup translation also failed: {str(fallback_e)}")
+            return content
+
+async def extract_content_fallback(url: str) -> str:
+    """Extract content manually from URL as fallback for VietPhrase."""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+    }
+    
+    try:
+        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
+            response = await client.get(url, headers=headers, follow_redirects=True)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Find content using the identifier classes
+            content = None
+            identifierClasses = ['page-content', 'print', 'mybox', 'text-data', 'chapter-content', 'article-content', 'box_con']
+            
+            # Special handling for shuhaige.net
+            if url.startswith('https://m.shuhaige.net') or url.startswith('https://www.shuhaige.net'):
+                identifierClasses = ['headeline', 'pager', 'content']
+                merged_content = soup.new_tag('div')
+                merged_content['class'] = 'merged-content'
+                for class_name in identifierClasses:
+                    found_element = soup.find(class_=re.compile(class_name))
+                    if found_element:
+                        element_copy = found_element.decode_contents()
+                        merged_content.append(BeautifulSoup(element_copy, 'html.parser'))
+                content = merged_content
+            else: 
+                for link in soup.find_all('a', href=True):
+                    href = link['href']
+                    from urllib.parse import urlparse
+                    parsed = urlparse(href)
+                    original_url = parsed.path
+                    if original_url:
+                        modified_href = await modify_url(original_url, url)
+                        link['href'] = f"{modified_href}&method=vietphrase"
+                for class_name in identifierClasses:
+                    content = soup.find(class_=re.compile(class_name))
+                    if content:
+                        break
+            return str(content)
+            
+    except Exception as e:
+        print(f"Content extraction fallback error: {str(e)}")
+        return ""
+
 async def translate_with_vietphrase(url: str) -> str:
-    """Translate using VietPhrase service."""
+    """Translate using VietPhrase service with fallback to manual extraction."""
     vietphrase_url = "http://vietphrase.info/VietPhrase/Browser"
     params = {
         "url": url,
@@ -291,10 +387,23 @@ async def translate_with_vietphrase(url: str) -> str:
                 
                 return str(content)
             
-            return ""
+            # If no content found, try fallback
+            raise Exception("No content found in VietPhrase response")
+            
     except Exception as e:
-        print(f"VietPhrase translation error: {str(e)}")
-        return ""
+        print(f"VietPhrase Browser translation error: {str(e)}, trying fallback...")
+        
+        # Fallback: Extract content manually and use VietPhrase API
+        try:
+            extracted_content = await extract_content_fallback(url)
+            if extracted_content:
+                translated_content = await translate_with_vietphrase_api(extracted_content)
+                return translated_content
+            else:
+                raise Exception("Could not extract content for translation")
+        except Exception as fallback_error:
+            print(f"VietPhrase fallback error: {str(fallback_error)}")
+            return ""
     
 async def extract_content(url: str, method: TranslationMethod = "base") -> tuple:
     """Extract content from the given URL and prepare it for translation."""
@@ -311,7 +420,6 @@ async def extract_content(url: str, method: TranslationMethod = "base") -> tuple
             translated_title = None
             if method == "vietphrase":
                 extracted_content = await translate_with_vietphrase(url)
-                print(extracted_content)
                 if extracted_content:
                     translated_title = "VietPhrase Translation"
                     translated_content = extracted_content
@@ -332,7 +440,7 @@ async def extract_content(url: str, method: TranslationMethod = "base") -> tuple
                 # indicates that it is a single-line comment. The text "identifierClasses" seems to be a
                 # placeholder or a note about the content of the code. Comments are used to provide
                 # explanations or notes within the code for better understanding by developers.
-                identifierClasses = ['page-content', 'print', 'mybox', 'text-data', 'chapter-content', 'article-content']
+                identifierClasses = ['page-content', 'print', 'mybox', 'text-data', 'chapter-content', 'article-content', 'box_con']
                 
                 # Special handling for shuhaige.net
                 if url.startswith('https://m.shuhaige.net') or url.startswith('https://www.shuhaige.net'):
