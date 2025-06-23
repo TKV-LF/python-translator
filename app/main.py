@@ -313,7 +313,7 @@ async def extract_content_fallback(url: str) -> str:
             
             # Find content using the identifier classes
             content = None
-            identifierClasses = ['page-content', 'print', 'mybox', 'text-data', 'chapter-content', 'article-content', 'box_con']
+            identifierClasses = ['page-content', 'print', 'mybox', 'text-data', 'chapter-content', 'article-content', 'box_con', 'book']
             
             # Special handling for shuhaige.net
             if url.startswith('https://m.shuhaige.net') or url.startswith('https://www.shuhaige.net'):
@@ -372,6 +372,12 @@ async def translate_with_vietphrase(url: str) -> str:
                 # Remove unwanted elements including style tags
                 for element in content.find_all(['meta', 'link', 'base', 'style', 'script']):
                     element.decompose()
+                
+                # Check if content is too short or minimal (like empty div)
+                content_text = content.get_text(strip=True)
+                if len(content_text) < 50 or not content_text:
+                    print("Content is too short or empty, using fallback method...")
+                    raise Exception("Content too short, using fallback")
                     
                 # Update all VietPhrase links
                 for link in content.find_all('a', href=True):
@@ -384,6 +390,7 @@ async def translate_with_vietphrase(url: str) -> str:
                         if original_url:
                             modified_href = await modify_url(original_url, url)
                             link['href'] = f"{modified_href}&method=vietphrase"
+                print(content)
                 
                 return str(content)
             
@@ -440,7 +447,7 @@ async def extract_content(url: str, method: TranslationMethod = "base") -> tuple
                 # indicates that it is a single-line comment. The text "identifierClasses" seems to be a
                 # placeholder or a note about the content of the code. Comments are used to provide
                 # explanations or notes within the code for better understanding by developers.
-                identifierClasses = ['page-content', 'print', 'mybox', 'text-data', 'chapter-content', 'article-content', 'box_con']
+                identifierClasses = ['page-content', 'print', 'mybox', 'text-data', 'chapter-content', 'article-content', 'box_con', 'book']
                 
                 # Special handling for shuhaige.net
                 if url.startswith('https://m.shuhaige.net') or url.startswith('https://www.shuhaige.net'):
